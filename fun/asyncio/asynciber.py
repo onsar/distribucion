@@ -13,9 +13,6 @@ except ImportError:
 from datetime import datetime
 from typing import Union, Optional
 
-# [os] +++++++++++++
-
-
 import logging
 from logging.handlers import RotatingFileHandler
 
@@ -32,13 +29,9 @@ logging.basicConfig(
 
 import configparser
 import paho.mqtt.publish as publish
+
 parser = configparser.ConfigParser()
-
 parser.read('config_iberdrola.ini')
-
-
-
-# [os] +++++++++++++
 
 
 LOGIN_URL = "loginNew/login"
@@ -64,10 +57,6 @@ class AsyncIber:
         if self.__session:
             await self.__session.close()
 
-
-
-    # [os] +++++++++++++++++++++++++
-    
     async def mqtt_tx(self,client,s_value):
         # logging.debug(client + "  " + s_register + "  " + s_value)
         # Parseo de las variables
@@ -78,8 +67,6 @@ class AsyncIber:
 
         mqtt_auth = { 'username': mqtt_login, 'password': mqtt_password }
         response = publish.single(mqtt_topic_prefix + "/" + client, s_value, hostname=mqtt_ip, auth=mqtt_auth)
-
-    # [os] +++++++++++++++++++++++++
 
 
 
@@ -234,19 +221,12 @@ class AsyncIber:
         data = await self._consumption_raw(start, end)
         return [float(x["valor"]) for x in data["y"]["data"][0] if x]
     
-
-
-
-    
     async def consumption_hour(self, dataj) -> list:
         hour_kwh = []
         for x in dataj["y"]["data"][0]:
             if x:
                 hour_kwh.append(float(x["valor"]))
         return hour_kwh
-
-
-
 
     async def _production_raw(self, start: datetime, end: datetime) -> list:
         return await self.__request(
@@ -274,7 +254,7 @@ class AsyncIber:
         data = await self._consumption_raw(start, end)
         return float(data["acumulado"])
 
-# [os] +++++++++++++++++++++++++++++++++++++
+
 def save_reading_register(rrs0):
     rr_path = "registers/reading_register.txt"
     writing =open(rr_path, "w", encoding="utf-8")
@@ -289,4 +269,3 @@ def open_reading_register():
     lectura.close()
     return data
 
-# [os] +++++++++++++++++++++++++++++++++++++

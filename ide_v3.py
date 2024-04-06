@@ -4,9 +4,6 @@ Incluir sistema de logs
     ok Cambiar todos los print()
     Revisar la prioridad de los mensajes
 
-enviar datos a node red
-    inclir fichero config.ini
-    Copiar la función de DATADIS
 Refactorizar
     Eliminar ficheros no usados
 
@@ -21,10 +18,10 @@ consumoNew/obtenerDatosConsumoPeriodo/fechaInicio/23-03-202400:00:00/fechaFinal/
 
 
 import asyncio
-import oligo1
-from oligo1.asyncio import AsyncIber
-from oligo1.asyncio import open_reading_register
-from oligo1.asyncio import save_reading_register
+import fun
+from fun.asyncio import AsyncIber
+from fun.asyncio import open_reading_register
+from fun.asyncio import save_reading_register
 
 from datetime import date, timedelta
 from datetime import datetime
@@ -46,19 +43,19 @@ logging.basicConfig(
 
 async def main():
         
-    # rrs = dp.abrir_reading_register() # Reading 
+
     rrs = open_reading_register() # Reading 
 
     for rr in rrs:
 
         connection = AsyncIber()
-    
-        await connection.login(rr["login"],rr["password"])
+        
 
         # {"login": "aa@bb.com", "password": "pas","energy": 1.1, "last": "2024-04-03T00:00:00" }
+        await connection.login(rr["login"],rr["password"])      
         from_date = datetime.fromisoformat(rr["last"])
         logging.debug(from_date)
-        logging.debug(type(from_date))
+        # <class 'datetime.datetime'>
         
         until_date = date.today()
         # until_date = date.today() - timedelta(days=1)
@@ -83,13 +80,12 @@ async def main():
                         int(date_s[10:12]),int(date_s[13:15]),int(date_s[16:18]))
         logging.debug("init_d: ")
         logging.debug(init_d)
-        logging.debug(type(init_d))
+        # <class 'datetime.datetime'>
 
-        i=0
+        
         e_a = float(rr["energy"]) # e_a  energy acumulated
-
         ener_time = from_date
-
+        i=0
         for n in consumption_h:
             '''
             {"name": "na","login": "lo@lo.com","password": "pa", "energy": 1.1,"last": "2024-04-04T00:00:00"}
@@ -108,20 +104,15 @@ async def main():
                 await connection.mqtt_tx(rr["name"],str(data_tx))
 
             else:
-                print("NO-TX",str(ener_time.replace(microsecond=0).isoformat())," ",n,)
+                logging.debug("NO-TX " + str(ener_time.replace(microsecond=0).isoformat()) +" "+ n)
 
         rr["last"] = str(ener_time.replace(microsecond=0).isoformat())
         rr["energy"] = e_a
 
         await connection.close()
 
-    # 2024-03-31 11:00:00 
-    # 2024-03-31T18:00:00
-    # 2024-03-27T00:05:23
-    # dp.save_reading_register(rrs)
     save_reading_register(rrs)
 
-    
 asyncio.run(main())
 
 
