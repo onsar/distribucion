@@ -52,62 +52,75 @@ async def main():
         
 
         # {"login": "aa@bb.com", "password": "pas","energy": 1.1, "last": "2024-04-03T00:00:00" }
-        await connection.login(rr["login"],rr["password"])      
+        try: 
+            await connection.login(rr["login"],rr["password"])
+
+        except Exception as ex:
+            print("Ha habido una excepción", type(ex))
+        
         from_date = datetime.fromisoformat(rr["last"])
+        # from_date = datetime.fromisoformat("2023-01-01T00:00:00")
         logging.debug(from_date)
         # <class 'datetime.datetime'>
         
         until_date = date.today()
+        # until_date = datetime.fromisoformat("2004-01-01T00:00:00")
         # until_date = date.today() - timedelta(days=1)
 
         # La consulta se hace de días enteros
         # consumo = await connection.consumption(from_date, until_date)
-        consumo_raw = await connection.consumption_raw(from_date, until_date)
+        consumo_raw = {}
+
+        try:
+            consumo_raw = await connection.consumption_raw(from_date, until_date)
+
+        except Exception as ex:
+            print("Ha habido una excepción", type(ex))
+
         logging.debug("consumo_raw:")
         logging.debug(consumo_raw)
 
 
-        consumption_h = await connection.consumption_hour(consumo_raw)
-        logging.debug("consumption_h:")
-        logging.debug(consumption_h)
+
+        if consumo_raw != {}:
+            consumption_h = await connection.consumption_hour(consumo_raw)
+            logging.debug("consumption_h:")
+            logging.debug(consumption_h)
+
+            #'012345678901234567'
+            #'27-03-202400:00:00'
+            date_s = consumo_raw["fechaPeriodo"]
+
+            init_d = datetime(int(date_s[6:10]),int(date_s[3:5]),int(date_s[0:2]),
+                            int(date_s[10:12]),int(date_s[13:15]),int(date_s[16:18]))
+            logging.debug("init_d: ")
+            logging.debug(init_d)
+            # <class 'datetime.datetime'>
 
         
-        #'012345678901234567'
-        #'27-03-202400:00:00'
-        date_s = consumo_raw["fechaPeriodo"]
+            e_a = float(rr["energy"]) # e_a  energy acumulated
+            ener_time = from_date
+            i=0
+            for n in consumption_h:
+                '''{"name": "na","login": "lo@lo.com","password": "pa", "energy": 1.1,"last": "2024-04-04T00:00:00"}'''
 
-        init_d = datetime(int(date_s[6:10]),int(date_s[3:5]),int(date_s[0:2]),
-                        int(date_s[10:12]),int(date_s[13:15]),int(date_s[16:18]))
-        logging.debug("init_d: ")
-        logging.debug(init_d)
-        # <class 'datetime.datetime'>
+                i += 1
+                ener_time = init_d + timedelta(seconds=(3600 * i))
+                if(ener_time > from_date):
+                    e_a = e_a + float(n)
+                    # e_h energy in an hour
+                    data_tx = {"name": rr["name"],
+                            "time":str(ener_time.replace(microsecond=0).isoformat()),
+                            "e_h":n, 
+                            "energy":e_a}
+                    logging.info(rr["name"] + " - " + str(data_tx))
+                    await connection.mqtt_tx(rr["name"],str(data_tx))
 
-        
-        e_a = float(rr["energy"]) # e_a  energy acumulated
-        ener_time = from_date
-        i=0
-        for n in consumption_h:
-            '''
-            {"name": "na","login": "lo@lo.com","password": "pa", "energy": 1.1,"last": "2024-04-04T00:00:00"}
-            '''
+                else:
+                    logging.debug("NO-TX " + str(ener_time.replace(microsecond=0).isoformat()) +" "+ str(n))
 
-            i += 1
-            ener_time = init_d + timedelta(seconds=(3600 * i))
-            if(ener_time > from_date):
-                e_a = e_a + float(n)
-                # e_h energy in an hour
-                data_tx = {"name": rr["name"],
-                           "time":str(ener_time.replace(microsecond=0).isoformat()),
-                           "e_h":n, 
-                           "energy":e_a}
-                logging.info(rr["name"] + " - " + str(data_tx))
-                await connection.mqtt_tx(rr["name"],str(data_tx))
-
-            else:
-                logging.debug("NO-TX " + str(ener_time.replace(microsecond=0).isoformat()) +" "+ n)
-
-        rr["last"] = str(ener_time.replace(microsecond=0).isoformat())
-        rr["energy"] = e_a
+            rr["last"] = str(ener_time.replace(microsecond=0).isoformat())
+            rr["energy"] = e_a
 
         await connection.close()
 
